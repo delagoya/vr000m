@@ -12,7 +12,7 @@ def throttle_curve(n):
 
 def render(profile, target):
     t = vol = 0.0; tc = 1 - math.exp(-1 / (SR * 0.12)); vc = 1 - math.exp(-1 / (SR * 0.05))
-    p1 = p2 = vib = bub = cyc = lp = 0.0
+    p1 = p2 = vib = bub = cyc = lp = lp2 = 0.0
     rng = np.random.default_rng(1)
     out = np.zeros(len(target)); freq = np.zeros(len(target)); tt = np.zeros(len(target))
     for i, tg in enumerate(target):
@@ -27,12 +27,15 @@ def render(profile, target):
             s = (tone + 0.22 * math.sin(p2)) * (0.78 + 0.22 * math.sin(bub)) * (0.2 + 0.8 * t) * 0.38
             freq[i] = base
         elif profile == "v8":
-            fire = 38 + 170 * t
-            cyc = (cyc + fire / SR) % 2
-            ph = cyc % 1
-            raw = (math.exp(-ph * 7) - 0.14) * (1 if cyc < 1 else 0.72) + rng.uniform(-1, 1) * (0.08 + 0.25 * t)
-            lp += (raw - lp) * (1 - math.exp(-TWO_PI * (350 + 3200 * t) / SR))
-            s = lp * (0.3 + 0.7 * t) * 0.9
+            fire = 36 + 130 * t
+            cyc = (cyc + fire / SR) % 4
+            idx = int(cyc); ph = cyc - idx; L = (1.0, 0.62, 0.88, 0.55)[idx]
+            pulse = (math.exp(-ph * 5) - 0.2) * L
+            bass = (0.5 * math.sin(TWO_PI * ph) + 0.2 * math.sin(2 * TWO_PI * ph)) * (0.6 + 0.4 * L)
+            raw = pulse + bass + rng.uniform(-1, 1) * (0.02 + 0.08 * t)
+            a = 1 - math.exp(-TWO_PI * (300 + 1300 * t) / SR)
+            lp += (raw - lp) * a; lp2 += (lp - lp2) * a
+            s = math.tanh(lp2 * 3) * (0.35 + 0.65 * t) * 0.5
             freq[i] = fire
         else:
             f = 160 * 2 ** (t * 3)

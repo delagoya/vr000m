@@ -28,7 +28,7 @@ Set your signing team, then run on a real iPhone (the Simulator has no accelerom
 | Profile | Pitch | Character |
 |---|---|---|
 | Space Car (default) | 260 → 1040 Hz (2 octaves) | Theremin-like tone, vibrato 5.5→9.5 Hz, "bubble" pulse 12→34 Hz, detuned fifth shimmer |
-| V8 | 38 → 208 firings/s | Decaying combustion pulses, uneven lope, intake noise, opening low-pass |
+| V8 | 36 → 166 firings/s | Deep rumble: firing-rate bass + 2nd harmonic, slow-decay pulses, 4-firing lope, 2-pole low-pass (300 → 1600 Hz), saturation so bass survives phone speakers |
 | Electric | 160 → 1280 Hz (3 octaves) | Clean sine whine + inverter partial |
 
 Loudness rises ~15 dB from idle to full throttle. Listen to `docs/previews/*.wav` (rendered by `tools/render_preview.py`, a Python port of the DSP):

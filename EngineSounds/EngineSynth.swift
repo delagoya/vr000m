@@ -70,8 +70,9 @@ final class EngineDSP {
     private var p2: Float = 0       // second voice (rad)
     private var vib: Float = 0      // vibrato LFO (rad)
     private var bub: Float = 0      // "bubble" AM LFO (rad)
-    private var cyc: Float = 0      // combustion cycle (0..<2, two firings)
-    private var lp: Float = 0       // one-pole low-pass state
+    private var cyc: Float = 0      // combustion cycle (0..<4, four firings)
+    private var lp: Float = 0       // low-pass stage 1
+    private var lp2: Float = 0      // low-pass stage 2
     private var rng: UInt32 = 0x1234_5678
 
     init(sampleRate: Float) {
@@ -122,26 +123,34 @@ final class EngineDSP {
         return (tone + shimmer) * am * amp * 0.38
     }
 
-    /// Combustion engine: exponentially-decaying pulse per cylinder firing,
-    /// an uneven "lope" between alternate firings, intake noise, and a
-    /// low-pass that opens up with throttle.
+    /// Combustion engine: deep, bass-heavy rumble. Slow-decaying pulse per
+    /// cylinder firing with an uneven 4-firing lope (cross-plane burble), a
+    /// firing-rate bass tone plus 2nd harmonic, light intake noise, and a
+    /// two-pole low-pass that only partly opens with throttle.
+    private static let lopePattern: [Float] = [1.0, 0.62, 0.88, 0.55]
+
     private func v8() -> Float {
-        let fire = 38 + 170 * t                        // firings per second
+        let fire = 36 + 130 * t                        // firings/s (pitch)
         cyc += fire / sr
-        if cyc >= 2 { cyc -= 2 }
-        let phase = cyc.truncatingRemainder(dividingBy: 1)
-        let lope: Float = cyc < 1 ? 1.0 : 0.72
-        let pulse = (exp(-phase * 7) - 0.14) * lope
+        if cyc >= 4 { cyc -= 4 }
+        let idx = Int(cyc)
+        let phase = cyc - Float(idx)
+        let lope = Self.lopePattern[idx]
 
-        let noise = nextNoise() * (0.08 + 0.25 * t)
-        let raw = pulse + noise
+        let pulse = (exp(-phase * 5) - 0.2) * lope
+        let bass = (0.5 * sin(twoPi * phase) + 0.2 * sin(2 * twoPi * phase)) * (0.6 + 0.4 * lope)
+        let noise = nextNoise() * (0.02 + 0.08 * t)
+        let raw = pulse + bass + noise
 
-        let cutoff = 350 + 3200 * t
+        let cutoff = 300 + 1300 * t
         let a = 1 - exp(-twoPi * cutoff / sr)
         lp += (raw - lp) * a
+        lp2 += (lp - lp2) * a
 
-        let amp = 0.3 + 0.7 * t
-        return lp * amp * 0.9
+        // Saturate so phone speakers (weak below ~150 Hz) still convey the
+        // bass through the harmonics it generates.
+        let amp = 0.35 + 0.65 * t
+        return tanh(lp2 * 3) * amp * 0.5
     }
 
     /// Electric motor: clean sine whine rising three octaves with an
